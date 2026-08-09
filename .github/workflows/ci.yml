@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e '.[dev]'
+      - name: Static checks
+        run: |
+          ruff check .
+          ruff format --check .
+          pyright
+      - name: Contract and route tests
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      - name: Verify container build
+        run: docker build --tag upnext-ai:ci .

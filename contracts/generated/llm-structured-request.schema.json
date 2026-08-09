@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "LlmMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "model"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "text"
+      ],
+      "title": "LlmMessage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/LlmMessage"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Messages",
+      "type": "array"
+    },
+    "responseSchema": {
+      "additionalProperties": true,
+      "title": "Responseschema",
+      "type": "object"
+    },
+    "systemInstruction": {
+      "maxLength": 30000,
+      "minLength": 1,
+      "title": "Systeminstruction",
+      "type": "string"
+    },
+    "temperature": {
+      "anyOf": [
+        {
+          "maximum": 2,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temperature"
+    }
+  },
+  "required": [
+    "systemInstruction",
+    "messages",
+    "responseSchema"
+  ],
+  "title": "StructuredRequest",
+  "type": "object"
+}

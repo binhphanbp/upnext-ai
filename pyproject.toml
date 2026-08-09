@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "upnext-ai"
+version = "0.1.0"
+description = "Private AI inference and evaluation service for UpNext."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "UNLICENSED" }
+authors = [{ name = "UpNext" }]
+dependencies = [
+  "fastapi==0.116.1",
+  "google-genai==1.29.0",
+  "httpx==0.28.1",
+  "opentelemetry-api==1.36.0",
+  "opentelemetry-exporter-otlp-proto-http==1.36.0",
+  "opentelemetry-sdk==1.36.0",
+  "opentelemetry-instrumentation-fastapi==0.57b0",
+  "pydantic==2.11.7",
+  "pydantic-settings==2.10.1",
+  "PyJWT==2.10.1",
+  "structlog==25.4.0",
+  "uvicorn[standard]==0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.4.1",
+  "pytest-asyncio==1.1.0",
+  "pytest-cov==6.2.1",
+  "ruff==0.12.9",
+  "pyright==1.1.403",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["contracts/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
+# B008 is the idiomatic FastAPI dependency declaration. Assertions belong in tests.
+ignore = ["B008", "S104"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+include = ["app", "tests"]
+reportUnknownMemberType = false
+reportUnknownArgumentType = false

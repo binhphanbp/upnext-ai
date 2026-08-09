@@ -1,0 +1,26 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "inputTokens": {
+      "minimum": 0,
+      "title": "Inputtokens",
+      "type": "integer"
+    },
+    "model": {
+      "title": "Model",
+      "type": "string"
+    },
+    "outputTokens": {
+      "minimum": 0,
+      "title": "Outputtokens",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "inputTokens",
+    "outputTokens",
+    "model"
+  ],
+  "title": "UsageChunk",
+  "type": "object"
+}

@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "LlmMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "model"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "text"
+      ],
+      "title": "LlmMessage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "maxOutputTokens": {
+      "anyOf": [
+        {
+          "maximum": 4096,
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Maxoutputtokens"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/LlmMessage"
+      },
+      "maxItems": 50,
+      "minItems": 1,
+      "title": "Messages",
+      "type": "array"
+    },
+    "systemInstruction": {
+      "maxLength": 30000,
+      "minLength": 1,
+      "title": "Systeminstruction",
+      "type": "string"
+    },
+    "temperature": {
+      "anyOf": [
+        {
+          "maximum": 2,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temperature"
+    }
+  },
+  "required": [
+    "systemInstruction",
+    "messages"
+  ],
+  "title": "TextStreamRequest",
+  "type": "object"
+}
