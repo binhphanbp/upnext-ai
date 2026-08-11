@@ -18,6 +18,7 @@ from app.providers.base import (
     ProviderRateLimitError,
     ProviderTimeoutError,
 )
+from app.providers.json_schema import normalize_response_json_schema
 
 logger = structlog.get_logger(__name__)
 
@@ -68,13 +69,14 @@ class GeminiProvider:
         if not self._client:
             raise ProviderNotConfiguredError()
 
-        config = types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0 if temperature is None else temperature,
-            response_mime_type="application/json",
-            response_json_schema=response_schema,
-        )
         try:
+            normalized_schema = normalize_response_json_schema(response_schema)
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0 if temperature is None else temperature,
+                response_mime_type="application/json",
+                response_json_schema=normalized_schema,
+            )
             async with asyncio.timeout(self._settings.structured_timeout_seconds):
                 response = await self._client.aio.models.generate_content(
                     model=self.structured_model,
@@ -83,6 +85,9 @@ class GeminiProvider:
                 )
         except TimeoutError as error:
             raise ProviderTimeoutError() from error
+        except ValueError as error:
+            logger.warning("gemini_structured_schema_invalid")
+            raise ProviderError() from error
         except errors.ClientError as error:
             raise self._map_error(error) from error
         except Exception as error:  # noqa: BLE001 - provider boundary normalizes provider failures.
@@ -151,6 +156,4 @@ class GeminiProvider:
         status = getattr(error, "code", None)
         if status == 429:
             return ProviderRateLimitError()
-        if status == 400:
-            return ProviderInvalidOutputError()
         return ProviderError()

@@ -11,6 +11,7 @@ from app.contracts.llm import LlmMessage, TextStreamRequest
 from app.core.config import Settings
 from app.providers.base import ProviderInvalidOutputError, ProviderNotConfiguredError
 from app.providers.gemini import GeminiProvider
+from app.providers.json_schema import normalize_response_json_schema
 
 
 def settings(*, gemini_api_key: str | None = "test-key") -> Settings:
@@ -55,6 +56,70 @@ async def test_structured_generation_parses_json_and_reports_provider_usage(
     assert value == {"intent": "job_search"}
     assert (input_tokens, output_tokens) == (12, 4)
     assert client.aio.models.generate_content.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_structured_generation_normalizes_backend_schema_before_gemini_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = SimpleNamespace(
+        text='{"intent":"GENERAL_GUIDANCE","toolCalls":null}',
+        parsed=None,
+        usage_metadata=None,
+    )
+    client = client_with(response)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+    backend_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "intent": {"type": "STRING", "enum": ["GENERAL_GUIDANCE"]},
+            "toolCalls": {
+                "type": "ARRAY",
+                "nullable": True,
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {"name": {"type": "STRING"}},
+                    "required": ["name"],
+                },
+            },
+        },
+        "required": ["intent"],
+    }
+
+    await provider.generate_structured(
+        system_instruction="Return JSON only.",
+        messages=[("user", "hello")],
+        response_schema=backend_schema,
+        temperature=0,
+    )
+
+    config = client.aio.models.generate_content.await_args.kwargs["config"]
+    assert config.response_json_schema == {
+        "type": "object",
+        "properties": {
+            "intent": {"type": "string", "enum": ["GENERAL_GUIDANCE"]},
+            "toolCalls": {
+                "type": ["array", "null"],
+                "items": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}},
+                    "required": ["name"],
+                },
+            },
+        },
+        "required": ["intent"],
+    }
+    assert backend_schema["type"] == "OBJECT"
+
+
+def test_schema_normalization_preserves_standard_schema_and_rejects_unknown_types() -> None:
+    assert normalize_response_json_schema({"type": "object", "properties": {}}) == {
+        "type": "object",
+        "properties": {},
+    }
+    with pytest.raises(ValueError, match="Unsupported JSON Schema type"):
+        normalize_response_json_schema({"type": "DATE"})
 
 
 @pytest.mark.asyncio
