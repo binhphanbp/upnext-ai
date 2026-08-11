@@ -79,7 +79,8 @@ def _normalize_node(node: dict[str, Any]) -> dict[str, Any]:
             normalized[key] = _normalize_node(value)
         elif key in _SCHEMA_LIST_KEYS and isinstance(value, list):
             normalized[key] = [
-                _normalize_node(item) if isinstance(item, dict) else deepcopy(item) for item in value
+                _normalize_node(item) if isinstance(item, dict) else deepcopy(item)
+                for item in value
             ]
         else:
             normalized[key] = deepcopy(value)
