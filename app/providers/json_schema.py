@@ -70,9 +70,7 @@ def _normalize_node(node: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(value, dict):
                 raise ValueError(f"JSON Schema {key} must be an object")
             normalized[key] = {
-                name: _normalize_node(child)
-                if isinstance(child, dict)
-                else deepcopy(child)
+                name: _normalize_node(child) if isinstance(child, dict) else deepcopy(child)
                 for name, child in value.items()
             }
         elif key in _SCHEMA_VALUE_KEYS and isinstance(value, dict):
