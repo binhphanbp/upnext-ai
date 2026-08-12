@@ -91,6 +91,7 @@ def _normalize_node(node: dict[str, Any]) -> dict[str, Any]:
     # the useful semantics without sending an incompatible schema upstream.
     return normalized
 
+
 def _normalize_type(value: Any) -> str | list[str]:
     if isinstance(value, str):
         return _normalize_type_name(value)
