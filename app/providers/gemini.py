@@ -94,13 +94,15 @@ class GeminiProvider:
             logger.exception("gemini_structured_request_failed")
             raise ProviderError() from error
 
-        text = (response.text or "").strip()
-        if not text:
-            raise ProviderInvalidOutputError()
-        try:
-            value = response.parsed if response.parsed is not None else json.loads(text)
-        except (TypeError, ValueError) as error:
-            raise ProviderInvalidOutputError() from error
+        value = response.parsed
+        if value is None:
+            text = (response.text or "").strip()
+            if not text:
+                raise ProviderInvalidOutputError()
+            try:
+                value = json.loads(text)
+            except (TypeError, ValueError) as error:
+                raise ProviderInvalidOutputError() from error
 
         usage = response.usage_metadata
         return (

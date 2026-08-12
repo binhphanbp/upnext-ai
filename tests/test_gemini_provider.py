@@ -9,7 +9,11 @@ from pydantic import SecretStr
 
 from app.contracts.llm import LlmMessage, TextStreamRequest
 from app.core.config import Settings
-from app.providers.base import ProviderInvalidOutputError, ProviderNotConfiguredError
+from app.providers.base import (
+    ProviderInvalidOutputError,
+    ProviderNotConfiguredError,
+    ProviderTimeoutError,
+)
 from app.providers.gemini import GeminiProvider
 from app.providers.json_schema import normalize_response_json_schema
 
@@ -100,7 +104,7 @@ async def test_structured_generation_normalizes_backend_schema_before_gemini_req
         "properties": {
             "intent": {"type": "string", "enum": ["GENERAL_GUIDANCE"]},
             "toolCalls": {
-                "type": ["array", "null"],
+                "type": "array",
                 "items": {
                     "type": "object",
                     "properties": {"name": {"type": "string"}},
@@ -111,6 +115,21 @@ async def test_structured_generation_normalizes_backend_schema_before_gemini_req
         "required": ["intent"],
     }
     assert backend_schema["type"] == "OBJECT"
+
+
+def test_schema_normalization_drops_legacy_nullable_for_gemini_compatibility() -> None:
+    assert normalize_response_json_schema(
+        {
+            "type": "OBJECT",
+            "nullable": True,
+            "properties": {
+                "note": {"type": "STRING", "nullable": True},
+            },
+        }
+    ) == {
+        "type": "object",
+        "properties": {"note": {"type": "string"}},
+    }
 
 
 def test_schema_normalization_preserves_standard_schema_and_rejects_unknown_types() -> None:
@@ -136,6 +155,46 @@ async def test_structured_generation_rejects_invalid_provider_json(
             messages=[("user", "hello")],
             response_schema={"type": "object"},
             temperature=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_structured_generation_accepts_sdk_parsed_value_without_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = SimpleNamespace(
+        text=None,
+        parsed={"intent": "GENERAL_GUIDANCE"},
+        usage_metadata=None,
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client_with(response))
+    provider = GeminiProvider(settings())
+
+    value, _, _ = await provider.generate_structured(
+        system_instruction="Return JSON only.",
+        messages=[("user", "hello")],
+        response_schema={"type": "object"},
+        temperature=0,
+    )
+
+    assert value == {"intent": "GENERAL_GUIDANCE"}
+
+
+@pytest.mark.asyncio
+async def test_structured_generation_maps_timeout_to_stable_provider_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(side_effect=TimeoutError)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderTimeoutError):
+        await provider.generate_structured(
+            system_instruction="Return JSON only.",
+            messages=[("user", "hello")],
+            response_schema={"type": "object"},
+            temperature=0,
         )
 
 
