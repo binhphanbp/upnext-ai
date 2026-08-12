@@ -83,8 +83,12 @@ def _normalize_node(node: dict[str, Any]) -> dict[str, Any]:
         else:
             normalized[key] = deepcopy(value)
 
-    if nullable:
-        _make_nullable(normalized)
+    # ``nullable`` belongs to the legacy internal contract.  Although a JSON
+    # Schema type union (for example ``[\"string\", \"null\"]``) is valid in
+    # general, Gemini's structured-output endpoint rejects that representation
+    # for some model/API combinations with a 400 response.  The contract uses
+    # optional fields for these values, so omitting the legacy marker preserves
+    # the useful semantics without sending an incompatible schema upstream.
     return normalized
 
 
@@ -101,22 +105,3 @@ def _normalize_type_name(value: str) -> str:
     if normalized not in {"string", "number", "integer", "boolean", "object", "array", "null"}:
         raise ValueError(f"Unsupported JSON Schema type: {value}")
     return normalized
-
-
-def _make_nullable(schema: dict[str, Any]) -> None:
-    schema_type = schema.get("type")
-    if isinstance(schema_type, str):
-        schema["type"] = [schema_type, "null"] if schema_type != "null" else "null"
-        return
-    if isinstance(schema_type, list):
-        if "null" not in schema_type:
-            schema["type"] = [*schema_type, "null"]
-        return
-
-    # ``nullable`` without a type is uncommon, but converting it to a standard
-    # union retains its intended semantics rather than silently dropping it.
-    any_of = schema.get("anyOf")
-    if isinstance(any_of, list):
-        schema["anyOf"] = [*any_of, {"type": "null"}]
-    else:
-        schema["anyOf"] = [{"type": "null"}]

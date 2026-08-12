@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_llm_provider
 from app.main import create_app
+from app.providers.base import ProviderInvalidOutputError, ProviderTimeoutError
 from tests.helpers import StubProvider, auth_headers
 
 
@@ -52,3 +53,45 @@ def test_stream_endpoint_returns_event_stream_without_leaking_request_content() 
     assert 'event: text\ndata: {"text":"Hello"}' in response.text
     assert "event: usage" in response.text
     assert "secret candidate context" not in response.text
+
+
+def test_structured_timeout_uses_gateway_timeout_and_stable_code() -> None:
+    client, provider = client_with_stub()
+
+    async def timeout(**_: object) -> tuple[object, int, int]:
+        raise ProviderTimeoutError()
+
+    provider.generate_structured = timeout  # type: ignore[method-assign]
+    response = client.post(
+        "/internal/v1/llm/structured",
+        headers=auth_headers(),
+        json={
+            "systemInstruction": "Return JSON only.",
+            "messages": [{"role": "user", "text": "hello"}],
+            "responseSchema": {"type": "object"},
+        },
+    )
+
+    assert response.status_code == 504
+    assert response.json()["detail"]["code"] == "AI_MODEL_TIMEOUT"
+
+
+def test_structured_invalid_output_uses_bad_gateway_and_stable_code() -> None:
+    client, provider = client_with_stub()
+
+    async def invalid(**_: object) -> tuple[object, int, int]:
+        raise ProviderInvalidOutputError()
+
+    provider.generate_structured = invalid  # type: ignore[method-assign]
+    response = client.post(
+        "/internal/v1/llm/structured",
+        headers=auth_headers(),
+        json={
+            "systemInstruction": "Return JSON only.",
+            "messages": [{"role": "user", "text": "hello"}],
+            "responseSchema": {"type": "object"},
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "AI_INVALID_OUTPUT"

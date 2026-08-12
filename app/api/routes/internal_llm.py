@@ -23,8 +23,10 @@ router = APIRouter(prefix="/internal/v1/llm", tags=["internal-llm"])
 def _provider_exception(error: ProviderError) -> HTTPException:
     code = error.code
     status_code = status.HTTP_429_TOO_MANY_REQUESTS if code == "AI_MODEL_RATE_LIMIT" else 503
-    if code in {"AI_INVALID_OUTPUT", "AI_MODEL_TIMEOUT"}:
+    if code == "AI_INVALID_OUTPUT":
         status_code = 502
+    elif code == "AI_MODEL_TIMEOUT":
+        status_code = status.HTTP_504_GATEWAY_TIMEOUT
     return HTTPException(
         status_code=status_code,
         detail={"code": code, "message": "AI provider could not complete this request."},
