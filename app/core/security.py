@@ -11,7 +11,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.config import Settings, get_settings
 
 _bearer = HTTPBearer(auto_error=False)
-_required_scope = "llm:invoke"
+_llm_scope = "llm:invoke"
+_embedding_scope = "embedding:invoke"
 
 
 @dataclass(frozen=True)
@@ -40,9 +41,11 @@ def _scopes(value: object) -> frozenset[str]:
     return frozenset()
 
 
-async def require_internal_principal(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    settings: Settings = Depends(get_settings),
+def _principal_for_scope(
+    *,
+    credentials: HTTPAuthorizationCredentials | None,
+    settings: Settings,
+    required_scope: str,
 ) -> InternalPrincipal:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _unauthorized()
@@ -75,6 +78,28 @@ async def require_internal_principal(
     run_id = claims.get("jti")
     if subject != "upnext-be" or not isinstance(run_id, str) or not run_id:
         raise _unauthorized()
-    if _required_scope not in scopes:
+    if required_scope not in scopes:
         raise _unauthorized()
     return InternalPrincipal(subject=subject, run_id=run_id, scopes=scopes)
+
+
+async def require_internal_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_llm_scope,
+    )
+
+
+async def require_embedding_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_embedding_scope,
+    )

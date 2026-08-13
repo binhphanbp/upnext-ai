@@ -40,6 +40,12 @@ class Settings(BaseSettings):
         default="gemini-2.5-flash", validation_alias="AI_QUALITY_STRUCTURED_MODEL"
     )
     text_model: str = Field(default="gemini-2.5-flash", validation_alias="AI_TEXT_MODEL")
+    embedding_model: str = Field(
+        default="gemini-embedding-001", validation_alias="AI_EMBEDDING_MODEL"
+    )
+    embedding_dimensions: int = Field(
+        default=768, ge=768, le=768, validation_alias="AI_EMBEDDING_DIMENSIONS"
+    )
     structured_timeout_seconds: int = Field(
         default=15, ge=1, le=60, validation_alias="AI_STRUCTURED_TIMEOUT_SECONDS"
     )
@@ -48,6 +54,9 @@ class Settings(BaseSettings):
     )
     stream_timeout_seconds: int = Field(
         default=20, ge=1, le=90, validation_alias="AI_STREAM_TIMEOUT_SECONDS"
+    )
+    embedding_timeout_seconds: int = Field(
+        default=20, ge=1, le=60, validation_alias="AI_EMBEDDING_TIMEOUT_SECONDS"
     )
     otel_exporter_otlp_endpoint: str | None = Field(
         default=None, validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT"

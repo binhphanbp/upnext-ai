@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -53,6 +54,10 @@ class GeminiProvider:
     @property
     def text_model(self) -> str:
         return self._settings.text_model
+
+    @property
+    def embedding_model(self) -> str:
+        return self._settings.embedding_model
 
     def structured_model_for(self, model_tier: StructuredModelTier) -> str:
         return (
@@ -168,6 +173,42 @@ class GeminiProvider:
 
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]:
         return self._stream(request)
+
+    async def embed_text(self, *, text: str, dimensions: int) -> list[float]:
+        if not self._client:
+            raise ProviderNotConfiguredError()
+        if dimensions != self._settings.embedding_dimensions:
+            raise ProviderInvalidOutputError()
+
+        try:
+            config = types.EmbedContentConfig(output_dimensionality=dimensions)
+            async with asyncio.timeout(self._settings.embedding_timeout_seconds):
+                response = await self._client.aio.models.embed_content(
+                    model=self.embedding_model,
+                    contents=text,
+                    config=config,
+                )
+        except TimeoutError as error:
+            raise ProviderTimeoutError() from error
+        except errors.ClientError as error:
+            raise self._map_error(error) from error
+        except ProviderError:
+            raise
+        except Exception as error:  # noqa: BLE001 - provider boundary normalizes provider failures.
+            logger.exception("gemini_embedding_request_failed")
+            raise ProviderError() from error
+
+        embeddings = getattr(response, "embeddings", None)
+        values = getattr(embeddings[0], "values", None) if embeddings else None
+        if not isinstance(values, list) or len(values) != dimensions:
+            raise ProviderInvalidOutputError()
+        vector = [float(value) for value in values]
+        if not all(math.isfinite(value) for value in vector):
+            raise ProviderInvalidOutputError()
+        magnitude = math.sqrt(sum(value * value for value in vector))
+        if not math.isfinite(magnitude) or magnitude <= 0:
+            raise ProviderInvalidOutputError()
+        return [value / magnitude for value in vector]
 
     @staticmethod
     def _map_error(error: errors.ClientError) -> ProviderError:

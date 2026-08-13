@@ -39,7 +39,7 @@ the separately configured batch timeout. Callers cannot submit an arbitrary time
 | Import a JD from PDF/DOCX | Transitional direct BE multimodal call | Add an authenticated binary/multimodal contract |
 | Salary research | Transitional direct BE call | Define citation, freshness and cache policy |
 | CV detailed scoring | BE gateway to `upnext-ai`, `quality` + `batch` | Monitor rubric quality, latency and fallback rate |
-| CV embeddings | Transitional direct BE call | Version embeddings, evaluation set and re-index plan |
+| CV embeddings | Private `upnext-ai` endpoint available; BE canary flag | Preserve the frozen 768-dimension contract, observe canary, then retire direct fallback |
 | Company-license extraction | Transitional direct BE multimodal call | Add document safety and extraction evaluation |
 
 “Transitional direct” is intentional and observable; it is not considered migrated.

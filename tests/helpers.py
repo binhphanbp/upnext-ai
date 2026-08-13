@@ -7,7 +7,7 @@ from typing import Any
 import jwt
 
 from app.contracts.llm import TextStreamRequest
-from app.providers.base import LlmProvider
+from app.providers.base import EmbeddingProvider, LlmProvider
 
 
 def internal_token(*, secret: str | None = None, scope: str = "llm:invoke", **claims: Any) -> str:
@@ -66,3 +66,20 @@ class StubProvider(LlmProvider):
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]:
         _ = request
         return self._stream()
+
+
+class StubEmbeddingProvider(EmbeddingProvider):
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    @property
+    def configured(self) -> bool:
+        return True
+
+    @property
+    def embedding_model(self) -> str:
+        return "gemini-embedding-001"
+
+    async def embed_text(self, *, text: str, dimensions: int) -> list[float]:
+        self.calls.append({"text": text, "dimensions": dimensions})
+        return [1.0] + [0.0] * (dimensions - 1)
