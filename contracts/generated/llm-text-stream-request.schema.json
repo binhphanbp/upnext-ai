@@ -12,7 +12,7 @@
           "type": "string"
         },
         "text": {
-          "maxLength": 20000,
+          "maxLength": 100000,
           "minLength": 1,
           "title": "Text",
           "type": "string"

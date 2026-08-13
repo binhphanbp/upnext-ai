@@ -94,6 +94,11 @@ When rolling out a backend that sends `modelTier`, deploy and verify the compati
 image first, then deploy the backend. During rollback, roll the backend back before the AI service.
 This order prevents an older strict Pydantic contract from rejecting a newer backend request.
 
+Batch structured workloads use `executionProfile=batch` and
+`AI_BATCH_STRUCTURED_TIMEOUT_SECONDS` (default 60 seconds). Deploy this additive AI contract
+before enabling CV-screening traffic in the backend. Keep the interactive timeout short; do not
+raise it globally to accommodate batch work.
+
 ## 5. Rollback and incident handling
 
 For an AI-service incident, first set the backend back to the established direct provider and

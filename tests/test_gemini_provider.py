@@ -83,6 +83,45 @@ async def test_structured_generation_uses_quality_model_only_for_quality_tier(
 
 
 @pytest.mark.asyncio
+async def test_structured_generation_uses_the_controlled_batch_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = SimpleNamespace(text='{"ok":true}', parsed=None, usage_metadata=None)
+    client = client_with(response)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(
+        settings().model_copy(
+            update={"structured_timeout_seconds": 1, "batch_structured_timeout_seconds": 30}
+        )
+    )
+
+    observed_timeouts: list[int] = []
+
+    class TimeoutProbe:
+        async def __aenter__(self) -> None:
+            return None
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+    def timeout_probe(seconds: int) -> TimeoutProbe:
+        observed_timeouts.append(seconds)
+        return TimeoutProbe()
+
+    monkeypatch.setattr("app.providers.gemini.asyncio.timeout", timeout_probe)
+
+    await provider.generate_structured(
+        system_instruction="Return JSON only.",
+        messages=[("user", "Score these CVs")],
+        response_schema={"type": "object"},
+        temperature=0,
+        execution_profile="batch",
+    )
+
+    assert observed_timeouts == [30]
+
+
+@pytest.mark.asyncio
 async def test_structured_generation_normalizes_backend_schema_before_gemini_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -36,6 +36,7 @@ def test_structured_endpoint_preserves_provider_contract() -> None:
     }
     assert provider.structured_calls[0]["messages"] == [("user", "Analyse my CV")]
     assert provider.structured_calls[0]["model_tier"] == "fast"
+    assert provider.structured_calls[0]["execution_profile"] == "interactive"
 
 
 def test_structured_endpoint_routes_quality_tier_without_accepting_model_names() -> None:
@@ -48,12 +49,14 @@ def test_structured_endpoint_routes_quality_tier_without_accepting_model_names()
             "messages": [{"role": "user", "text": "Write a production JD"}],
             "responseSchema": {"type": "object"},
             "modelTier": "quality",
+            "executionProfile": "batch",
         },
     )
 
     assert response.status_code == 200
     assert response.json()["model"] == "test-quality"
     assert provider.structured_calls[0]["model_tier"] == "quality"
+    assert provider.structured_calls[0]["execution_profile"] == "batch"
 
 
 def test_stream_endpoint_returns_event_stream_without_leaking_request_content() -> None:

@@ -46,6 +46,7 @@ async def generate_structured(
             response_schema=request.response_schema,
             temperature=request.temperature,
             model_tier=request.model_tier,
+            execution_profile=request.execution_profile,
         )
     except ProviderError as error:
         raise _provider_exception(error) from error

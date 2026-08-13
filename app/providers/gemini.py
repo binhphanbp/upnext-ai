@@ -17,6 +17,7 @@ from app.providers.base import (
     ProviderNotConfiguredError,
     ProviderRateLimitError,
     ProviderTimeoutError,
+    StructuredExecutionProfile,
     StructuredModelTier,
 )
 from app.providers.json_schema import normalize_response_json_schema
@@ -74,6 +75,7 @@ class GeminiProvider:
         response_schema: dict[str, Any],
         temperature: float | None,
         model_tier: StructuredModelTier = "fast",
+        execution_profile: StructuredExecutionProfile = "interactive",
     ) -> tuple[Any, int, int]:
         if not self._client:
             raise ProviderNotConfiguredError()
@@ -86,7 +88,12 @@ class GeminiProvider:
                 response_mime_type="application/json",
                 response_json_schema=normalized_schema,
             )
-            async with asyncio.timeout(self._settings.structured_timeout_seconds):
+            timeout_seconds = (
+                self._settings.batch_structured_timeout_seconds
+                if execution_profile == "batch"
+                else self._settings.structured_timeout_seconds
+            )
+            async with asyncio.timeout(timeout_seconds):
                 response = await self._client.aio.models.generate_content(
                     model=self.structured_model_for(model_tier),
                     contents=self._contents(messages),

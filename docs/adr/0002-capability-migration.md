@@ -25,6 +25,11 @@ name:
 The service maps each tier to an environment-controlled model. This prevents callers from
 bypassing cost and quality policy while allowing models to change without a BE release.
 
+The structured endpoint also accepts a controlled execution profile. `interactive` keeps a
+short latency budget and a 20,000-character message budget. `batch` is reserved for approved
+server-side workloads such as CV screening and allows a bounded 100,000-character payload and
+the separately configured batch timeout. Callers cannot submit an arbitrary timeout.
+
 ## Capability matrix
 
 | Capability | Current path after this change | Next migration condition |
@@ -33,7 +38,8 @@ bypassing cost and quality policy while allowing models to change without a BE r
 | Generate or optimize a JD from form data | BE gateway to `upnext-ai`, `quality` tier | Monitor quality, latency and fallback rate |
 | Import a JD from PDF/DOCX | Transitional direct BE multimodal call | Add an authenticated binary/multimodal contract |
 | Salary research | Transitional direct BE call | Define citation, freshness and cache policy |
-| CV screening and embeddings | Transitional direct BE call | Version embeddings, evaluation set and re-index plan |
+| CV detailed scoring | BE gateway to `upnext-ai`, `quality` + `batch` | Monitor rubric quality, latency and fallback rate |
+| CV embeddings | Transitional direct BE call | Version embeddings, evaluation set and re-index plan |
 | Company-license extraction | Transitional direct BE multimodal call | Add document safety and extraction evaluation |
 
 “Transitional direct” is intentional and observable; it is not considered migrated.

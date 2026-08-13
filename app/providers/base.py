@@ -6,6 +6,7 @@ from typing import Any, Literal, Protocol
 from app.contracts.llm import TextStreamRequest
 
 StructuredModelTier = Literal["fast", "quality"]
+StructuredExecutionProfile = Literal["interactive", "batch"]
 
 
 class ProviderError(Exception):
@@ -50,6 +51,7 @@ class LlmProvider(Protocol):
         response_schema: dict[str, Any],
         temperature: float | None,
         model_tier: StructuredModelTier,
+        execution_profile: StructuredExecutionProfile,
     ) -> tuple[Any, int, int]: ...
 
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]: ...
