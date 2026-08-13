@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     structured_timeout_seconds: int = Field(
         default=15, ge=1, le=60, validation_alias="AI_STRUCTURED_TIMEOUT_SECONDS"
     )
+    batch_structured_timeout_seconds: int = Field(
+        default=60, ge=10, le=120, validation_alias="AI_BATCH_STRUCTURED_TIMEOUT_SECONDS"
+    )
     stream_timeout_seconds: int = Field(
         default=20, ge=1, le=90, validation_alias="AI_STREAM_TIMEOUT_SECONDS"
     )
