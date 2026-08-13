@@ -57,6 +57,10 @@ class StubProvider(LlmProvider):
         self.structured_calls.append(kwargs)
         return {"ok": True}, 12, 8
 
+    async def generate_structured_with_file(self, **kwargs: Any) -> tuple[Any, int, int]:
+        self.structured_calls.append(kwargs)
+        return {"ok": True}, 12, 8
+
     async def _stream(self) -> AsyncIterator[tuple[str, str | int]]:
         yield "text", "Hello"
         yield "text", " world"

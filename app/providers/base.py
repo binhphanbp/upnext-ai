@@ -54,6 +54,18 @@ class LlmProvider(Protocol):
         execution_profile: StructuredExecutionProfile,
     ) -> tuple[Any, int, int]: ...
 
+    async def generate_structured_with_file(
+        self,
+        *,
+        system_instruction: str,
+        prompt: str,
+        response_schema: dict[str, Any],
+        file: tuple[str, bytes] | None,
+        temperature: float | None,
+        model_tier: StructuredModelTier,
+        execution_profile: StructuredExecutionProfile,
+    ) -> tuple[Any, int, int]: ...
+
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]: ...
 
 

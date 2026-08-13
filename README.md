@@ -47,13 +47,18 @@ configured provider. Do not expose either internal LLM endpoint through Nginx.
 
 Every `/internal/v1/*` request requires an HS256 JWT issued by `upnext-be`, with:
 
-- `iss=upnext-be`, `aud=upnext-ai`, `scope` containing `llm:invoke`;
+- `iss=upnext-be`, `aud=upnext-ai`, and the least-privilege scope required by the route:
+  `llm:invoke`, `embedding:invoke`, or `job-post:extract`;
 - a non-empty `sub`, `jti`, `iat` and `exp`;
 - a maximum lifetime of 90 seconds by default;
 - an `environment` claim matching the target deployment.
 
 The contract is generated from Pydantic models in `contracts/generated/`. The BE adapter
 has matching integration tests; this avoids maintaining unverified TypeScript/Python DTOs.
+
+`POST /internal/v1/job-posts/extract` is the narrow multimodal capability for recruiter JD
+imports. It accepts structured instructions, a response schema, and at most one private PDF
+or image source (8 MiB). It does not store, log, or expose the source file.
 
 ## Staging rollout
 
