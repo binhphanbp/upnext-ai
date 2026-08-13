@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from app.api.routes import health, internal_llm
+from app.api.routes import health, internal_embeddings, internal_llm
 from app.core.config import get_settings
 from app.core.observability import configure_logging, configure_tracing, request_id_middleware
 
@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
     app.middleware("http")(request_id_middleware)
     app.include_router(health.router)
     app.include_router(internal_llm.router)
+    app.include_router(internal_embeddings.router)
     configure_tracing(app, settings.environment, settings.otel_exporter_otlp_endpoint)
 
     @app.exception_handler(Exception)

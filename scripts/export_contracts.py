@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from app.contracts.embedding import EmbeddingRequest, EmbeddingResponse
 from app.contracts.llm import (
     StructuredRequest,
     StructuredResponse,
@@ -18,6 +19,8 @@ OUTPUT = ROOT / "contracts" / "generated"
 
 def documents() -> dict[str, dict[str, object]]:
     return {
+        "embedding-request.schema.json": EmbeddingRequest.model_json_schema(by_alias=True),
+        "embedding-response.schema.json": EmbeddingResponse.model_json_schema(by_alias=True),
         "llm-structured-request.schema.json": StructuredRequest.model_json_schema(by_alias=True),
         "llm-structured-response.schema.json": StructuredResponse.model_json_schema(by_alias=True),
         "llm-text-stream-request.schema.json": TextStreamRequest.model_json_schema(by_alias=True),

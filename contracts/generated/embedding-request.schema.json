@@ -1,0 +1,22 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "dimensions": {
+      "const": 768,
+      "default": 768,
+      "title": "Dimensions",
+      "type": "integer"
+    },
+    "text": {
+      "maxLength": 12000,
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "text"
+  ],
+  "title": "EmbeddingRequest",
+  "type": "object"
+}

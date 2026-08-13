@@ -8,7 +8,13 @@ reachable by `upnext-be` on the private Docker network.
 `upnext-be` remains the source of truth for authentication, RBAC, subscriptions,
 candidate/job/application data, conversations, audit records, and all business writes.
 This service owns provider access, prompt/model execution, structured output validation,
-streaming, and—later—retrieval, evaluation and embeddings.
+streaming and private embeddings. Retrieval and evaluation remain later migration slices.
+
+The embedding endpoint is deliberately narrow: `POST /internal/v1/embeddings`
+requires an internal JWT with `embedding:invoke` scope and returns the frozen
+`gemini-embedding-001:768:l2-v1` vector contract used by UpNext's pgvector indexes.
+Changing that model, dimension, normalization or cache key requires a versioned
+contract and an explicit re-index plan.
 
 The frontend never calls this service directly. AI-proposed actions are only executed by
 `upnext-be` after authorization and explicit user confirmation.

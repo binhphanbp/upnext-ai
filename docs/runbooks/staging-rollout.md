@@ -37,6 +37,20 @@ AI_SERVICE_FALLBACK_TO_GEMINI=true
 Keep `AI_LLM_PROVIDER=gemini` for the first deploy. This proves that introducing the
 container cannot interrupt existing candidate chat.
 
+Embedding migration is an independent switch. Deploy this service and its embedding
+contract first, then deploy the compatible backend while keeping:
+
+```dotenv
+AI_EMBEDDING_PROVIDER=gemini
+AI_EMBEDDING_FALLBACK_TO_GEMINI=true
+```
+
+After readiness and the internal contract smoke test pass, canary with
+`AI_EMBEDDING_PROVIDER=upnext-ai`. The endpoint preserves
+`gemini-embedding-001:768:l2-v1`, so valid cached vectors remain reusable and rollback
+does not require re-indexing. Do not change the model, dimension, normalization or
+cache key during this rollout.
+
 ## 2. Deploy the image privately
 
 The infrastructure compose file must use the GHCR image and the `upnext-staging` network.

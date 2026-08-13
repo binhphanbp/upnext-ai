@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cacheKey": {
+      "const": "gemini-embedding-001:768:l2-v1",
+      "title": "Cachekey",
+      "type": "string"
+    },
+    "dimensions": {
+      "const": 768,
+      "title": "Dimensions",
+      "type": "integer"
+    },
+    "model": {
+      "const": "gemini-embedding-001",
+      "title": "Model",
+      "type": "string"
+    },
+    "normalization": {
+      "const": "l2-v1",
+      "title": "Normalization",
+      "type": "string"
+    },
+    "vector": {
+      "items": {
+        "type": "number"
+      },
+      "maxItems": 768,
+      "minItems": 768,
+      "title": "Vector",
+      "type": "array"
+    }
+  },
+  "required": [
+    "vector",
+    "model",
+    "dimensions",
+    "normalization",
+    "cacheKey"
+  ],
+  "title": "EmbeddingResponse",
+  "type": "object"
+}

@@ -32,6 +32,7 @@ def client_with(response: object) -> SimpleNamespace:
             models=SimpleNamespace(
                 generate_content=AsyncMock(return_value=response),
                 generate_content_stream=AsyncMock(),
+                embed_content=AsyncMock(),
             )
         )
     )
@@ -301,3 +302,41 @@ async def test_provider_fails_closed_without_an_api_key(
             response_schema={},
             temperature=None,
         )
+
+
+@pytest.mark.asyncio
+async def test_embedding_generation_preserves_model_space_and_l2_normalizes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    values = [3.0, 4.0] + [0.0] * 766
+    response = SimpleNamespace(embeddings=[SimpleNamespace(values=values)])
+    client = client_with(SimpleNamespace())
+    client.aio.models.embed_content = AsyncMock(return_value=response)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    vector = await provider.embed_text(text="TypeScript", dimensions=768)
+
+    assert len(vector) == 768
+    assert vector[:2] == pytest.approx([0.6, 0.8])
+    await_args = client.aio.models.embed_content.await_args
+    assert await_args is not None
+    call = await_args.kwargs
+    assert call["model"] == "gemini-embedding-001"
+    assert call["contents"] == "TypeScript"
+    assert call["config"].output_dimensionality == 768
+    assert getattr(call["config"], "task_type", None) is None
+
+
+@pytest.mark.asyncio
+async def test_embedding_generation_rejects_invalid_provider_vector(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = SimpleNamespace(embeddings=[SimpleNamespace(values=[1.0, 2.0])])
+    client = client_with(SimpleNamespace())
+    client.aio.models.embed_content = AsyncMock(return_value=response)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderInvalidOutputError):
+        await provider.embed_text(text="TypeScript", dimensions=768)
