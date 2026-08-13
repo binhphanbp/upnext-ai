@@ -82,6 +82,50 @@ class GeminiProvider:
         model_tier: StructuredModelTier = "fast",
         execution_profile: StructuredExecutionProfile = "interactive",
     ) -> tuple[Any, int, int]:
+        return await self._generate_structured(
+            system_instruction=system_instruction,
+            contents=self._contents(messages),
+            response_schema=response_schema,
+            temperature=temperature,
+            model_tier=model_tier,
+            execution_profile=execution_profile,
+        )
+
+    async def generate_structured_with_file(
+        self,
+        *,
+        system_instruction: str,
+        prompt: str,
+        response_schema: dict[str, Any],
+        file: tuple[str, bytes] | None,
+        temperature: float | None,
+        model_tier: StructuredModelTier = "quality",
+        execution_profile: StructuredExecutionProfile = "interactive",
+    ) -> tuple[Any, int, int]:
+        parts: list[types.Part] = []
+        if file is not None:
+            mime_type, content = file
+            parts.append(types.Part.from_bytes(data=content, mime_type=mime_type))
+        parts.append(types.Part.from_text(text=prompt))
+        return await self._generate_structured(
+            system_instruction=system_instruction,
+            contents=[types.Content(role="user", parts=parts)],
+            response_schema=response_schema,
+            temperature=temperature,
+            model_tier=model_tier,
+            execution_profile=execution_profile,
+        )
+
+    async def _generate_structured(
+        self,
+        *,
+        system_instruction: str,
+        contents: list[types.Content],
+        response_schema: dict[str, Any],
+        temperature: float | None,
+        model_tier: StructuredModelTier,
+        execution_profile: StructuredExecutionProfile,
+    ) -> tuple[Any, int, int]:
         if not self._client:
             raise ProviderNotConfiguredError()
 
@@ -101,7 +145,7 @@ class GeminiProvider:
             async with asyncio.timeout(timeout_seconds):
                 response = await self._client.aio.models.generate_content(
                     model=self.structured_model_for(model_tier),
-                    contents=self._contents(messages),
+                    contents=contents,
                     config=config,
                 )
         except TimeoutError as error:

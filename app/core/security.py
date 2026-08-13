@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 _bearer = HTTPBearer(auto_error=False)
 _llm_scope = "llm:invoke"
 _embedding_scope = "embedding:invoke"
+_job_post_extraction_scope = "job-post:extract"
 
 
 @dataclass(frozen=True)
@@ -102,4 +103,15 @@ async def require_embedding_principal(
         credentials=credentials,
         settings=settings,
         required_scope=_embedding_scope,
+    )
+
+
+async def require_job_post_extraction_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_job_post_extraction_scope,
     )
