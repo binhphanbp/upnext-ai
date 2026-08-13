@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from app.contracts.llm import TextStreamRequest
+
+StructuredModelTier = Literal["fast", "quality"]
 
 
 class ProviderError(Exception):
@@ -35,6 +37,8 @@ class LlmProvider(Protocol):
     @property
     def structured_model(self) -> str: ...
 
+    def structured_model_for(self, model_tier: StructuredModelTier) -> str: ...
+
     @property
     def text_model(self) -> str: ...
 
@@ -45,6 +49,7 @@ class LlmProvider(Protocol):
         messages: list[tuple[str, str]],
         response_schema: dict[str, Any],
         temperature: float | None,
+        model_tier: StructuredModelTier,
     ) -> tuple[Any, int, int]: ...
 
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]: ...

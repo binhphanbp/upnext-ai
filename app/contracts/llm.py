@@ -19,6 +19,7 @@ class StructuredRequest(StrictModel):
     messages: list[LlmMessage] = Field(min_length=1, max_length=50)
     response_schema: dict[str, Any] = Field(alias="responseSchema")
     temperature: float | None = Field(default=None, ge=0, le=2)
+    model_tier: Literal["fast", "quality"] = Field(default="fast", alias="modelTier")
 
 
 class StructuredResponse(StrictModel):

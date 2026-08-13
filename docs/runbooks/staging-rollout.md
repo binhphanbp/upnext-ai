@@ -83,6 +83,17 @@ Perform each check with a non-production test account:
 
 Record the image digest, backend version, model names, and check time in the deployment log.
 
+## Structured model tiers
+
+The structured endpoint accepts only the controlled tiers `fast` and `quality`; callers never send
+provider model names. `fast` is the backward-compatible default used by routing and classification.
+`quality` is reserved for user-facing authoring workloads such as recruiter JD generation and maps
+to `AI_QUALITY_STRUCTURED_MODEL` inside this service.
+
+When rolling out a backend that sends `modelTier`, deploy and verify the compatible `upnext-ai`
+image first, then deploy the backend. During rollback, roll the backend back before the AI service.
+This order prevents an older strict Pydantic contract from rejecting a newer backend request.
+
 ## 5. Rollback and incident handling
 
 For an AI-service incident, first set the backend back to the established direct provider and

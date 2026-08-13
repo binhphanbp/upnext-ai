@@ -63,6 +63,26 @@ async def test_structured_generation_parses_json_and_reports_provider_usage(
 
 
 @pytest.mark.asyncio
+async def test_structured_generation_uses_quality_model_only_for_quality_tier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = SimpleNamespace(text='{"ok":true}', parsed=None, usage_metadata=None)
+    client = client_with(response)
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    await provider.generate_structured(
+        system_instruction="Return JSON only.",
+        messages=[("user", "Write a JD")],
+        response_schema={"type": "object"},
+        temperature=0.2,
+        model_tier="quality",
+    )
+
+    assert client.aio.models.generate_content.await_args.kwargs["model"] == "gemini-2.5-flash"
+
+
+@pytest.mark.asyncio
 async def test_structured_generation_normalizes_backend_schema_before_gemini_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

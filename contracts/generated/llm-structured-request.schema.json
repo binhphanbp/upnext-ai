@@ -37,6 +37,15 @@
       "title": "Messages",
       "type": "array"
     },
+    "modelTier": {
+      "default": "fast",
+      "enum": [
+        "fast",
+        "quality"
+      ],
+      "title": "Modeltier",
+      "type": "string"
+    },
     "responseSchema": {
       "additionalProperties": true,
       "title": "Responseschema",
