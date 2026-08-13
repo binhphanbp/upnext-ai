@@ -68,3 +68,64 @@ def test_job_post_extraction_rejects_invalid_base64_files() -> None:
         json=common,
     )
     assert response.status_code == 422
+
+
+def test_job_post_generation_accepts_only_its_dedicated_scope() -> None:
+    client, provider = client_with_stub()
+    payload = {
+        "systemInstruction": "Return JSON only.",
+        "prompt": "Create a JD for a backend engineer.",
+        "responseSchema": {"type": "object"},
+    }
+
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="llm:invoke"),
+        json=payload,
+    )
+    assert response.status_code == 401
+
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="job-post:extract"),
+        json=payload,
+    )
+    assert response.status_code == 401
+
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="job-post:generate"),
+        json=payload,
+    )
+    assert response.status_code == 200
+    assert response.json()["model"] == "test-quality"
+    assert provider.structured_calls[0]["file"] is None
+
+    # JD generation is deliberately text-only. Documents must use the separate
+    # extraction capability, which has a tighter file-validation boundary.
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="job-post:generate"),
+        json={
+            **payload,
+            "file": {
+                "mimeType": "application/pdf",
+                "base64Data": base64.b64encode(b"%PDF-1.7 sample").decode(),
+            },
+        },
+    )
+    assert response.status_code == 422
+
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="job-post:generate"),
+        json={**payload, "modelTier": "fast"},
+    )
+    assert response.status_code == 422
+
+    response = client.post(
+        "/internal/v1/job-posts/generate",
+        headers=auth_headers(scope="job-post:generate"),
+        json={**payload, "executionProfile": "batch"},
+    )
+    assert response.status_code == 422

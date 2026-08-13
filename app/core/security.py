@@ -14,6 +14,7 @@ _bearer = HTTPBearer(auto_error=False)
 _llm_scope = "llm:invoke"
 _embedding_scope = "embedding:invoke"
 _job_post_extraction_scope = "job-post:extract"
+_job_post_generation_scope = "job-post:generate"
 
 
 @dataclass(frozen=True)
@@ -114,4 +115,15 @@ async def require_job_post_extraction_principal(
         credentials=credentials,
         settings=settings,
         required_scope=_job_post_extraction_scope,
+    )
+
+
+async def require_job_post_generation_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_job_post_generation_scope,
     )

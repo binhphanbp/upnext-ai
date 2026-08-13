@@ -35,7 +35,7 @@ the separately configured batch timeout. Callers cannot submit an arbitrary time
 | Capability | Current path after this change | Next migration condition |
 | --- | --- | --- |
 | Candidate Copilot | BE gateway to `upnext-ai` | Add evaluations and canary telemetry |
-| Generate or optimize a JD from form data | BE gateway to `upnext-ai`, `quality` tier | Monitor quality, latency and fallback rate |
+| Generate or improve a recruiter JD | `job-post:generate` private structured endpoint; BE canary flag, direct Gemini fallback | Keep generation independent from Copilot traffic; evaluate factuality, catalog matching and fallback rate |
 | Import a JD from PDF/DOCX/image | `job-post:extract` private multimodal endpoint; BE canary flag, direct Gemini fallback | Observe extraction quality, latency and fallback rate before making service the default |
 | Salary research | Transitional direct BE call | Define citation, freshness and cache policy |
 | CV detailed scoring | BE gateway to `upnext-ai`, `quality` + `batch` | Monitor rubric quality, latency and fallback rate |
