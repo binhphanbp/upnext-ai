@@ -30,5 +30,9 @@ async def ready(
     return {
         "status": "ok",
         "service": "upnext-ai",
-        "models": {"structured": provider.structured_model, "text": provider.text_model},
+        "models": {
+            "structured": provider.structured_model,
+            "qualityStructured": provider.structured_model_for("quality"),
+            "text": provider.text_model,
+        },
     }

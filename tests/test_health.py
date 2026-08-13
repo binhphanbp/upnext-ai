@@ -15,4 +15,8 @@ def test_ready_health_includes_non_sensitive_capabilities(client: TestClient) ->
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "upnext-ai"
-    assert body["models"] == {"structured": "gemini-2.5-flash-lite", "text": "gemini-2.5-flash"}
+    assert body["models"] == {
+        "structured": "gemini-2.5-flash-lite",
+        "qualityStructured": "gemini-2.5-flash",
+        "text": "gemini-2.5-flash",
+    }

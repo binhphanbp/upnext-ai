@@ -13,6 +13,10 @@ streaming, and—later—retrieval, evaluation and embeddings.
 The frontend never calls this service directly. AI-proposed actions are only executed by
 `upnext-be` after authorization and explicit user confirmation.
 
+AI capabilities move here incrementally rather than through a big-bang rewrite. See the
+[capability migration ADR](docs/adr/0002-capability-migration.md) for the current ownership
+matrix, model-tier policy and rollout requirements.
+
 ## Local development
 
 1. Copy `.env.example` to `.env` and set a unique `AI_INTERNAL_JWT_SECRET`.

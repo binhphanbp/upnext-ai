@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     structured_model: str = Field(
         default="gemini-2.5-flash-lite", validation_alias="AI_STRUCTURED_MODEL"
     )
+    quality_structured_model: str = Field(
+        default="gemini-2.5-flash", validation_alias="AI_QUALITY_STRUCTURED_MODEL"
+    )
     text_model: str = Field(default="gemini-2.5-flash", validation_alias="AI_TEXT_MODEL")
     structured_timeout_seconds: int = Field(
         default=15, ge=1, le=60, validation_alias="AI_STRUCTURED_TIMEOUT_SECONDS"

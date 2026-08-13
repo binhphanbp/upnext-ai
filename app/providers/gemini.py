@@ -17,6 +17,7 @@ from app.providers.base import (
     ProviderNotConfiguredError,
     ProviderRateLimitError,
     ProviderTimeoutError,
+    StructuredModelTier,
 )
 from app.providers.json_schema import normalize_response_json_schema
 
@@ -52,6 +53,13 @@ class GeminiProvider:
     def text_model(self) -> str:
         return self._settings.text_model
 
+    def structured_model_for(self, model_tier: StructuredModelTier) -> str:
+        return (
+            self._settings.quality_structured_model
+            if model_tier == "quality"
+            else self.structured_model
+        )
+
     def _contents(self, messages: list[tuple[str, str]]) -> list[types.Content]:
         return [
             types.Content(role=role, parts=[types.Part.from_text(text=text)])
@@ -65,6 +73,7 @@ class GeminiProvider:
         messages: list[tuple[str, str]],
         response_schema: dict[str, Any],
         temperature: float | None,
+        model_tier: StructuredModelTier = "fast",
     ) -> tuple[Any, int, int]:
         if not self._client:
             raise ProviderNotConfiguredError()
@@ -79,7 +88,7 @@ class GeminiProvider:
             )
             async with asyncio.timeout(self._settings.structured_timeout_seconds):
                 response = await self._client.aio.models.generate_content(
-                    model=self.structured_model,
+                    model=self.structured_model_for(model_tier),
                     contents=self._contents(messages),
                     config=config,
                 )

@@ -35,6 +35,25 @@ def test_structured_endpoint_preserves_provider_contract() -> None:
         "model": "test-structured",
     }
     assert provider.structured_calls[0]["messages"] == [("user", "Analyse my CV")]
+    assert provider.structured_calls[0]["model_tier"] == "fast"
+
+
+def test_structured_endpoint_routes_quality_tier_without_accepting_model_names() -> None:
+    client, provider = client_with_stub()
+    response = client.post(
+        "/internal/v1/llm/structured",
+        headers=auth_headers(),
+        json={
+            "systemInstruction": "Return JSON only.",
+            "messages": [{"role": "user", "text": "Write a production JD"}],
+            "responseSchema": {"type": "object"},
+            "modelTier": "quality",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["model"] == "test-quality"
+    assert provider.structured_calls[0]["model_tier"] == "quality"
 
 
 def test_stream_endpoint_returns_event_stream_without_leaking_request_content() -> None:

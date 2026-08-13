@@ -50,6 +50,9 @@ class StubProvider(LlmProvider):
     def text_model(self) -> str:
         return "test-text"
 
+    def structured_model_for(self, model_tier: str) -> str:
+        return "test-quality" if model_tier == "quality" else self.structured_model
+
     async def generate_structured(self, **kwargs: Any) -> tuple[Any, int, int]:
         self.structured_calls.append(kwargs)
         return {"ok": True}, 12, 8

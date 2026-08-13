@@ -45,6 +45,7 @@ async def generate_structured(
             messages=[(message.role, message.text) for message in request.messages],
             response_schema=request.response_schema,
             temperature=request.temperature,
+            model_tier=request.model_tier,
         )
     except ProviderError as error:
         raise _provider_exception(error) from error
@@ -52,7 +53,7 @@ async def generate_structured(
         value=value,
         inputTokens=input_tokens,
         outputTokens=output_tokens,
-        model=provider.structured_model,
+        model=provider.structured_model_for(request.model_tier),
     )
 
 
