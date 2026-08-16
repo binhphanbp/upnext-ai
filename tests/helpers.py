@@ -7,7 +7,7 @@ from typing import Any
 import jwt
 
 from app.contracts.llm import TextStreamRequest
-from app.providers.base import EmbeddingProvider, LlmProvider
+from app.providers.base import EmbeddingProvider, GroundedAnswer, GroundedProvider, LlmProvider
 
 
 def internal_token(*, secret: str | None = None, scope: str = "llm:invoke", **claims: Any) -> str:
@@ -70,6 +70,30 @@ class StubProvider(LlmProvider):
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]:
         _ = request
         return self._stream()
+
+
+class StubGroundedProvider(GroundedProvider):
+    def __init__(self, answer: GroundedAnswer | None = None) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.answer = answer or GroundedAnswer(
+            text='{"median": 30}',
+            sources=(("VietnamWorks", "https://example.test/a"),),
+            search_queries=("backend salary hanoi",),
+            input_tokens=41,
+            output_tokens=17,
+        )
+
+    @property
+    def configured(self) -> bool:
+        return True
+
+    @property
+    def grounded_model(self) -> str:
+        return "test-grounded"
+
+    async def generate_grounded(self, **kwargs: Any) -> GroundedAnswer:
+        self.calls.append(kwargs)
+        return self.answer
 
 
 class StubEmbeddingProvider(EmbeddingProvider):

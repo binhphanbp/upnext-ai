@@ -475,3 +475,173 @@ def test_google_genai_async_streaming_dependency_is_installed() -> None:
     import aiohttp  # noqa: PLC0415 - deliberately imported inside the guard test.
 
     assert aiohttp.ClientResponse is not None
+
+
+def grounded_response(
+    *,
+    text: str = '{"median": 30}',
+    chunks: list[object] | None = None,
+    queries: list[str] | None = None,
+) -> SimpleNamespace:
+    metadata = SimpleNamespace(
+        grounding_chunks=chunks if chunks is not None else [],
+        web_search_queries=queries if queries is not None else [],
+    )
+    return SimpleNamespace(
+        text=text,
+        candidates=[SimpleNamespace(grounding_metadata=metadata)],
+        usage_metadata=SimpleNamespace(prompt_token_count=30, candidates_token_count=9),
+    )
+
+
+def web_chunk(title: str, uri: str) -> SimpleNamespace:
+    return SimpleNamespace(web=SimpleNamespace(title=title, uri=uri))
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_requests_search_and_never_a_response_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Pairing a response schema with the search tool makes Gemini return empty
+    # grounding metadata, which would silently strip every citation.
+    client = client_with(grounded_response())
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    await provider.generate_grounded(
+        system_instruction="Cite your sources.",
+        prompt="Backend salaries in Ha Noi?",
+        temperature=0.2,
+    )
+
+    kwargs = client.aio.models.generate_content.await_args.kwargs
+    assert kwargs["model"] == "gemini-2.5-pro"
+    config = kwargs["config"]
+    assert config.tools and config.tools[0].google_search is not None
+    assert getattr(config, "response_json_schema", None) is None
+    assert getattr(config, "response_mime_type", None) is None
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_collects_distinct_sources_and_queries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(
+        grounded_response(
+            chunks=[
+                web_chunk("VietnamWorks", "https://example.test/a"),
+                # Repeated URL: the caller counts distinct sources to decide
+                # confidence, so duplicates must not inflate that count.
+                web_chunk("VietnamWorks mirror", "https://example.test/a"),
+                web_chunk("TopDev", "https://example.test/b"),
+                web_chunk("", "https://example.test/c"),
+                web_chunk("No link", ""),
+            ],
+            queries=["backend salary hanoi", "  ", "luong backend ha noi"],
+        )
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    answer = await provider.generate_grounded(
+        system_instruction="Cite your sources.",
+        prompt="Backend salaries in Ha Noi?",
+        temperature=None,
+    )
+
+    assert answer.sources == (
+        ("VietnamWorks", "https://example.test/a"),
+        ("TopDev", "https://example.test/b"),
+    )
+    assert answer.search_queries == ("backend salary hanoi", "luong backend ha noi")
+    assert (answer.input_tokens, answer.output_tokens) == (30, 9)
+    assert answer.text == '{"median": 30}'
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_reports_an_answer_without_grounding_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # An ungrounded answer must arrive as verifiably empty evidence rather than
+    # crash, so the caller can reject it on its own rules.
+    client = client_with(SimpleNamespace(text="No data found.", candidates=[], usage_metadata=None))
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    answer = await provider.generate_grounded(
+        system_instruction="Cite your sources.",
+        prompt="Backend salaries in Ha Noi?",
+        temperature=None,
+    )
+
+    assert answer.sources == ()
+    assert answer.search_queries == ()
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_rejects_an_empty_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(grounded_response(text="   "))
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderInvalidOutputError):
+        await provider.generate_grounded(
+            system_instruction="Cite your sources.",
+            prompt="Backend salaries in Ha Noi?",
+            temperature=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_maps_unsupported_region_to_region_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(
+        side_effect=client_error(
+            "FAILED_PRECONDITION", "User location is not supported for the API use."
+        )
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderRegionBlockedError):
+        await provider.generate_grounded(
+            system_instruction="Cite your sources.",
+            prompt="Backend salaries in Ha Noi?",
+            temperature=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_fails_closed_without_an_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY")
+    provider = GeminiProvider(settings(gemini_api_key=None))
+
+    with pytest.raises(ProviderNotConfiguredError):
+        await provider.generate_grounded(
+            system_instruction="Cite your sources.",
+            prompt="Backend salaries in Ha Noi?",
+            temperature=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_grounded_generation_maps_timeout_to_stable_provider_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(side_effect=TimeoutError())
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderTimeoutError):
+        await provider.generate_grounded(
+            system_instruction="Cite your sources.",
+            prompt="Backend salaries in Ha Noi?",
+            temperature=None,
+        )

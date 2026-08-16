@@ -48,7 +48,8 @@ configured provider. Do not expose either internal LLM endpoint through Nginx.
 Every `/internal/v1/*` request requires an HS256 JWT issued by `upnext-be`, with:
 
 - `iss=upnext-be`, `aud=upnext-ai`, and the least-privilege scope required by the route:
-  `llm:invoke`, `embedding:invoke`, `job-post:extract`, or `job-post:generate`;
+  `llm:invoke`, `embedding:invoke`, `job-post:extract`, `job-post:generate`,
+  `company-license:extract`, or `research:grounded`;
 - a non-empty `sub`, `jti`, `iat` and `exp`;
 - a maximum lifetime of 90 seconds by default;
 - an `environment` claim matching the target deployment.
@@ -63,6 +64,18 @@ or image source (8 MiB). It does not store, log, or expose the source file.
 `POST /internal/v1/job-posts/generate` is the separate structured capability for generating
 a recruiter JD from backend-prepared facts. It intentionally accepts one bounded prompt, not
 conversation history or browser input, and requires the dedicated `job-post:generate` scope.
+
+`POST /internal/v1/companies/license-extract` reads registration fields from a company's
+business licence document. It has its own scope so that a token minted to read a JD cannot
+also read company registration documents.
+
+`POST /internal/v1/research/grounded` answers a question against live web search and returns
+the answer together with the sources and search queries the model actually used. It is the
+only route that reaches outside the model's own knowledge, and each call fans out into
+several searches on a premium model, so it requires the dedicated `research:grounded` scope.
+The answer text is returned unparsed: a response schema cannot be combined with the search
+tool without emptying the grounding metadata, so the caller pins the shape in its prompt and
+decides for itself whether the cited evidence is strong enough to use.
 
 ## Staging rollout
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 from app.contracts.llm import TextStreamRequest
@@ -80,6 +81,37 @@ class LlmProvider(Protocol):
     ) -> tuple[Any, int, int]: ...
 
     def stream_text(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]: ...
+
+
+@dataclass(frozen=True)
+class GroundedAnswer:
+    """A provider answer together with the evidence it actually consulted.
+
+    `text` is intentionally unparsed: the caller owns the shape it asked for,
+    because a response schema cannot be combined with the search tool.
+    """
+
+    text: str
+    sources: tuple[tuple[str, str], ...]
+    search_queries: tuple[str, ...]
+    input_tokens: int
+    output_tokens: int
+
+
+class GroundedProvider(Protocol):
+    @property
+    def configured(self) -> bool: ...
+
+    @property
+    def grounded_model(self) -> str: ...
+
+    async def generate_grounded(
+        self,
+        *,
+        system_instruction: str,
+        prompt: str,
+        temperature: float | None,
+    ) -> GroundedAnswer: ...
 
 
 class EmbeddingProvider(Protocol):
