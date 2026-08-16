@@ -68,4 +68,6 @@ class JobPostGenerationRequest(StrictModel):
     # Keep the rollout comparable with the direct recruiter flow: this
     # capability always uses the quality model in one interactive request.
     model_tier: Literal["quality"] = Field(default="quality", alias="modelTier")
-    execution_profile: Literal["interactive"] = Field(default="interactive", alias="executionProfile")
+    execution_profile: Literal["interactive"] = Field(
+        default="interactive", alias="executionProfile"
+    )
