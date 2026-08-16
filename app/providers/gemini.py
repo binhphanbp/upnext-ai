@@ -17,6 +17,7 @@ from app.providers.base import (
     ProviderInvalidOutputError,
     ProviderNotConfiguredError,
     ProviderRateLimitError,
+    ProviderRegionBlockedError,
     ProviderTimeoutError,
     StructuredExecutionProfile,
     StructuredModelTier,
@@ -259,4 +260,25 @@ class GeminiProvider:
         status = getattr(error, "code", None)
         if status == 429:
             return ProviderRateLimitError()
+        if GeminiProvider._is_region_block(error):
+            # Logged without the provider message: it is operator-facing
+            # infrastructure detail, and the message can echo request context.
+            logger.error("gemini_region_blocked", provider_status=getattr(error, "status", None))
+            return ProviderRegionBlockedError()
         return ProviderError()
+
+    @staticmethod
+    def _is_region_block(error: errors.ClientError) -> bool:
+        """Detect a geography refusal rather than a request-level fault.
+
+        Gemini answers an unsupported deployment region with HTTP 400 and
+        `FAILED_PRECONDITION`, which is otherwise indistinguishable from an
+        ordinary bad request. The message is checked as well because
+        FAILED_PRECONDITION is a general-purpose status the provider also
+        uses for unrelated preconditions such as missing billing.
+        """
+
+        if getattr(error, "status", None) != "FAILED_PRECONDITION":
+            return False
+        message = str(getattr(error, "message", "") or "").lower()
+        return "location is not supported" in message

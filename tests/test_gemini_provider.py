@@ -5,13 +5,17 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from google.genai import errors
 from pydantic import SecretStr
 
 from app.contracts.llm import LlmMessage, TextStreamRequest
 from app.core.config import Settings
 from app.providers.base import (
+    ProviderError,
     ProviderInvalidOutputError,
     ProviderNotConfiguredError,
+    ProviderRateLimitError,
+    ProviderRegionBlockedError,
     ProviderTimeoutError,
 )
 from app.providers.gemini import GeminiProvider
@@ -340,3 +344,99 @@ async def test_embedding_generation_rejects_invalid_provider_vector(
 
     with pytest.raises(ProviderInvalidOutputError):
         await provider.embed_text(text="TypeScript", dimensions=768)
+
+
+def client_error(status: str, message: str, code: int = 400) -> errors.ClientError:
+    """Build a ClientError shaped like a real Gemini REST error body."""
+
+    return errors.ClientError(
+        code,
+        {"error": {"code": code, "status": status, "message": message}},
+    )
+
+
+@pytest.mark.asyncio
+async def test_structured_generation_maps_unsupported_region_to_region_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Exact status/message Gemini returns for a deployment it refuses to serve.
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(
+        side_effect=client_error(
+            "FAILED_PRECONDITION", "User location is not supported for the API use."
+        )
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderRegionBlockedError) as raised:
+        await provider.generate_structured(
+            system_instruction="Return JSON only.",
+            messages=[("user", "hello")],
+            response_schema={"type": "object"},
+            temperature=0,
+        )
+
+    assert raised.value.code == "AI_PROVIDER_REGION_BLOCKED"
+
+
+@pytest.mark.asyncio
+async def test_embedding_maps_unsupported_region_to_region_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(SimpleNamespace())
+    client.aio.models.embed_content = AsyncMock(
+        side_effect=client_error(
+            "FAILED_PRECONDITION", "User location is not supported for the API use."
+        )
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderRegionBlockedError):
+        await provider.embed_text(text="TypeScript", dimensions=768)
+
+
+@pytest.mark.asyncio
+async def test_other_failed_precondition_stays_generic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # FAILED_PRECONDITION is reused for unrelated causes (e.g. billing), so the
+    # status alone must not be treated as a geography block.
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(
+        side_effect=client_error("FAILED_PRECONDITION", "Billing account is not configured.")
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderError) as raised:
+        await provider.generate_structured(
+            system_instruction="Return JSON only.",
+            messages=[("user", "hello")],
+            response_schema={"type": "object"},
+            temperature=0,
+        )
+
+    assert not isinstance(raised.value, ProviderRegionBlockedError)
+    assert raised.value.code == "AI_SERVICE_UNAVAILABLE"
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_still_maps_before_region_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with(SimpleNamespace())
+    client.aio.models.generate_content = AsyncMock(
+        side_effect=client_error("RESOURCE_EXHAUSTED", "Quota exceeded.", code=429)
+    )
+    monkeypatch.setattr("app.providers.gemini.genai.Client", lambda **_: client)
+    provider = GeminiProvider(settings())
+
+    with pytest.raises(ProviderRateLimitError):
+        await provider.generate_structured(
+            system_instruction="Return JSON only.",
+            messages=[("user", "hello")],
+            response_schema={"type": "object"},
+            temperature=0,
+        )
