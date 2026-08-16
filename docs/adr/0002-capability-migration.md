@@ -37,10 +37,10 @@ the separately configured batch timeout. Callers cannot submit an arbitrary time
 | Candidate Copilot | BE gateway to `upnext-ai` | Add evaluations and canary telemetry |
 | Generate or improve a recruiter JD | `job-post:generate` private structured endpoint; BE canary flag, direct Gemini fallback | Keep generation independent from Copilot traffic; evaluate factuality, catalog matching and fallback rate |
 | Import a JD from PDF/DOCX/image | `job-post:extract` private multimodal endpoint; BE canary flag, direct Gemini fallback | Observe extraction quality, latency and fallback rate before making service the default |
-| Salary research | Transitional direct BE call | Define citation, freshness and cache policy |
+| Salary research | `research:grounded` private endpoint; BE canary flag, direct Gemini fallback | Observe grounding rate and how often the evidence is too thin to use; the citation, freshness and cache rules stay in BE |
 | CV detailed scoring | BE gateway to `upnext-ai`, `quality` + `batch` | Monitor rubric quality, latency and fallback rate |
 | CV embeddings | Private `upnext-ai` endpoint available; BE canary flag | Preserve the frozen 768-dimension contract, observe canary, then retire direct fallback |
-| Company-license extraction | Transitional direct BE multimodal call | Add document safety and extraction evaluation |
+| Company-license extraction | `company-license:extract` private multimodal endpoint; BE canary flag, direct Gemini fallback | Add document safety and extraction evaluation |
 
 “Transitional direct” is intentional and observable; it is not considered migrated.
 

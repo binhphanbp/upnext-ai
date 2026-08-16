@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import Depends
 
 from app.core.config import Settings, get_settings
-from app.providers.base import EmbeddingProvider, LlmProvider
+from app.providers.base import EmbeddingProvider, GroundedProvider, LlmProvider
 from app.providers.gemini import GeminiProvider
 
 
@@ -20,6 +20,10 @@ def get_llm_provider(settings: Settings = Depends(get_settings)) -> LlmProvider:
 
 
 def get_embedding_provider(settings: Settings = Depends(get_settings)) -> EmbeddingProvider:
+    return GeminiProvider(settings)
+
+
+def get_grounded_provider(settings: Settings = Depends(get_settings)) -> GroundedProvider:
     return GeminiProvider(settings)
 
 

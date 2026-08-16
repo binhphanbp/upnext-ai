@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     embedding_model: str = Field(
         default="gemini-embedding-001", validation_alias="AI_EMBEDDING_MODEL"
     )
+    # Grounded answers are pinned to their own model rather than the fast/quality
+    # tiers: measured on this workload, 3.x models answer from memory without
+    # ever calling the search tool, which produces an ungrounded answer with no
+    # citations at all. 2.5-pro searches every time and is faster here.
+    grounded_model: str = Field(default="gemini-2.5-pro", validation_alias="AI_GROUNDED_MODEL")
     embedding_dimensions: int = Field(
         default=768, ge=768, le=768, validation_alias="AI_EMBEDDING_DIMENSIONS"
     )
@@ -57,6 +62,11 @@ class Settings(BaseSettings):
     )
     embedding_timeout_seconds: int = Field(
         default=20, ge=1, le=60, validation_alias="AI_EMBEDDING_TIMEOUT_SECONDS"
+    )
+    # A grounded run issues several web searches before answering; measured
+    # round trips sit at 42-50s, so the usual 15-20s budgets abort every call.
+    grounded_timeout_seconds: int = Field(
+        default=75, ge=20, le=150, validation_alias="AI_GROUNDED_TIMEOUT_SECONDS"
     )
     otel_exporter_otlp_endpoint: str | None = Field(
         default=None, validation_alias="OTEL_EXPORTER_OTLP_ENDPOINT"

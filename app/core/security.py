@@ -16,6 +16,7 @@ _embedding_scope = "embedding:invoke"
 _job_post_extraction_scope = "job-post:extract"
 _job_post_generation_scope = "job-post:generate"
 _company_license_extraction_scope = "company-license:extract"
+_grounded_scope = "research:grounded"
 
 
 @dataclass(frozen=True)
@@ -138,4 +139,15 @@ async def require_company_license_extraction_principal(
         credentials=credentials,
         settings=settings,
         required_scope=_company_license_extraction_scope,
+    )
+
+
+async def require_grounded_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_grounded_scope,
     )

@@ -13,6 +13,7 @@ from google.genai import errors, types
 from app.contracts.llm import TextStreamRequest
 from app.core.config import Settings
 from app.providers.base import (
+    GroundedAnswer,
     ProviderError,
     ProviderInvalidOutputError,
     ProviderNotConfiguredError,
@@ -66,6 +67,10 @@ class GeminiProvider:
     @property
     def embedding_model(self) -> str:
         return self._settings.embedding_model
+
+    @property
+    def grounded_model(self) -> str:
+        return self._settings.grounded_model
 
     def structured_model_for(self, model_tier: StructuredModelTier) -> str:
         return (
@@ -182,6 +187,73 @@ class GeminiProvider:
             value,
             int(usage.prompt_token_count or 0) if usage else 0,
             int(usage.candidates_token_count or 0) if usage else 0,
+        )
+
+    async def generate_grounded(
+        self,
+        *,
+        system_instruction: str,
+        prompt: str,
+        temperature: float | None,
+    ) -> GroundedAnswer:
+        if not self._client:
+            raise ProviderNotConfiguredError()
+
+        try:
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0 if temperature is None else temperature,
+                # No response schema on purpose: pairing one with the search
+                # tool makes the provider return empty grounding metadata, and
+                # the citations are the reason this capability exists. The
+                # caller pins the shape in its prompt and parses defensively.
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            )
+            async with asyncio.timeout(self._settings.grounded_timeout_seconds):
+                response = await self._client.aio.models.generate_content(
+                    model=self._settings.grounded_model,
+                    contents=self._contents([("user", prompt)]),
+                    config=config,
+                )
+        except TimeoutError as error:
+            raise ProviderTimeoutError() from error
+        except errors.ClientError as error:
+            raise self._map_error(error) from error
+        except Exception as error:  # noqa: BLE001 - provider boundary normalizes provider failures.
+            logger.exception("gemini_grounded_request_failed")
+            raise ProviderError() from error
+
+        text = (response.text or "").strip()
+        if not text:
+            raise ProviderInvalidOutputError()
+
+        candidate = (response.candidates or [None])[0]
+        metadata = getattr(candidate, "grounding_metadata", None)
+
+        sources: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for chunk in getattr(metadata, "grounding_chunks", None) or []:
+            web = getattr(chunk, "web", None)
+            title = (getattr(web, "title", None) or "").strip()
+            url = (getattr(web, "uri", None) or "").strip()
+            if not title or not url or url in seen:
+                continue
+            seen.add(url)
+            sources.append((title, url))
+
+        queries = tuple(
+            query.strip()
+            for query in (getattr(metadata, "web_search_queries", None) or [])
+            if query and query.strip()
+        )
+
+        usage = response.usage_metadata
+        return GroundedAnswer(
+            text=text,
+            sources=tuple(sources),
+            search_queries=queries,
+            input_tokens=int(usage.prompt_token_count or 0) if usage else 0,
+            output_tokens=int(usage.candidates_token_count or 0) if usage else 0,
         )
 
     async def _stream(self, request: TextStreamRequest) -> AsyncIterator[tuple[str, str | int]]:
