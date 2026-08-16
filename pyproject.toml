@@ -11,6 +11,14 @@ requires-python = ">=3.12,<3.14"
 license = { text = "UNLICENSED" }
 authors = [{ name = "UpNext" }]
 dependencies = [
+  # google-genai treats aiohttp as optional, but its async streaming path
+  # dereferences `aiohttp.ClientResponse` in an isinstance check that is not
+  # guarded by the `has_aiohttp` flag it sets at import time. Without the
+  # package installed, every stream raises `NameError: name 'aiohttp' is not
+  # defined` the moment the first chunk arrives -- long after the provider has
+  # already answered 200, so it surfaces as a generic AI outage. Pinned here
+  # because streaming (candidate copilot) does not work without it.
+  "aiohttp==3.12.15",
   "fastapi==0.116.1",
   "google-genai==1.29.0",
   "httpx==0.28.1",
