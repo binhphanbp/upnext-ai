@@ -458,3 +458,20 @@ def test_client_uses_the_api_version_that_serves_json_mode(
 
     http_options = captured["http_options"]
     assert getattr(http_options, "api_version", None) == "v1beta"
+
+
+def test_google_genai_async_streaming_dependency_is_installed() -> None:
+    """google-genai's async stream path needs aiohttp at runtime.
+
+    The SDK marks aiohttp optional and sets `has_aiohttp` at import time, but
+    its `_aiter_response_stream` isinstance check dereferences
+    `aiohttp.ClientResponse` without consulting that flag. When the package is
+    absent, streaming fails with `NameError` only after the provider has
+    already returned 200, which reads as a generic AI outage rather than a
+    missing dependency. Assert it is installed so the failure cannot come back
+    silently.
+    """
+
+    import aiohttp  # noqa: PLC0415 - deliberately imported inside the guard test.
+
+    assert aiohttp.ClientResponse is not None
