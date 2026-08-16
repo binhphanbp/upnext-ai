@@ -15,6 +15,7 @@ _llm_scope = "llm:invoke"
 _embedding_scope = "embedding:invoke"
 _job_post_extraction_scope = "job-post:extract"
 _job_post_generation_scope = "job-post:generate"
+_company_license_extraction_scope = "company-license:extract"
 
 
 @dataclass(frozen=True)
@@ -126,4 +127,15 @@ async def require_job_post_generation_principal(
         credentials=credentials,
         settings=settings,
         required_scope=_job_post_generation_scope,
+    )
+
+
+async def require_company_license_extraction_principal(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+) -> InternalPrincipal:
+    return _principal_for_scope(
+        credentials=credentials,
+        settings=settings,
+        required_scope=_company_license_extraction_scope,
     )
