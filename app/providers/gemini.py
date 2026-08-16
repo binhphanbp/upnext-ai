@@ -38,7 +38,14 @@ class GeminiProvider:
         self._client = (
             genai.Client(
                 api_key=api_key,
-                http_options=types.HttpOptions(api_version="v1"),
+                # Structured output ("JSON mode") is not served on v1: that
+                # endpoint rejects response_mime_type/response_json_schema with
+                # `INVALID_ARGUMENT: JSON mode is not enabled for api version
+                # v1`. Every structured capability -- copilot, CV screening, JD
+                # generation and extraction -- depends on it, so the client is
+                # pinned to v1beta. Text streaming and embeddings were verified
+                # to behave identically on v1beta.
+                http_options=types.HttpOptions(api_version="v1beta"),
             )
             if api_key
             else None

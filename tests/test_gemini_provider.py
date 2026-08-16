@@ -440,3 +440,21 @@ async def test_rate_limit_still_maps_before_region_check(
             response_schema={"type": "object"},
             temperature=0,
         )
+
+
+def test_client_uses_the_api_version_that_serves_json_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Structured output is rejected on v1 with "JSON mode is not enabled for
+    # api version v1", which would break every structured capability.
+    captured: dict[str, object] = {}
+
+    def capture_client(**kwargs: object) -> SimpleNamespace:
+        captured.update(kwargs)
+        return client_with(SimpleNamespace())
+
+    monkeypatch.setattr("app.providers.gemini.genai.Client", capture_client)
+    GeminiProvider(settings())
+
+    http_options = captured["http_options"]
+    assert getattr(http_options, "api_version", None) == "v1beta"
