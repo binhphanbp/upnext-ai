@@ -51,3 +51,23 @@ class JobPostExtractionRequest(StrictModel):
     execution_profile: Literal["interactive", "batch"] = Field(
         default="interactive", alias="executionProfile"
     )
+
+
+class JobPostGenerationRequest(StrictModel):
+    """Narrow internal contract for generating a recruiter JD draft.
+
+    A JD generation run is intentionally a single prompt, not a general chat.
+    This keeps the capability's context budget, permission and observability
+    independent from Candidate Copilot.
+    """
+
+    system_instruction: str = Field(min_length=1, max_length=30_000, alias="systemInstruction")
+    prompt: str = Field(min_length=1, max_length=50_000)
+    response_schema: dict[str, Any] = Field(alias="responseSchema")
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    # Keep the rollout comparable with the direct recruiter flow: this
+    # capability always uses the quality model in one interactive request.
+    model_tier: Literal["quality"] = Field(default="quality", alias="modelTier")
+    execution_profile: Literal["interactive"] = Field(
+        default="interactive", alias="executionProfile"
+    )

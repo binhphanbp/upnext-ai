@@ -23,6 +23,19 @@ class ProviderRateLimitError(ProviderError):
     code = "AI_MODEL_RATE_LIMIT"
 
 
+class ProviderRegionBlockedError(ProviderError):
+    """The provider refuses to serve this deployment's geography.
+
+    Distinct from a generic outage because retrying, failing over to another
+    model tier, or fixing the request schema cannot resolve it -- the call is
+    rejected before the payload is considered. Collapsing it into the generic
+    error previously made a hard infrastructure block look like a transient
+    or schema fault.
+    """
+
+    code = "AI_PROVIDER_REGION_BLOCKED"
+
+
 class ProviderInvalidOutputError(ProviderError):
     code = "AI_INVALID_OUTPUT"
 
