@@ -82,3 +82,19 @@ decides for itself whether the cited evidence is strong enough to use.
 Follow the [staging rollout runbook](docs/runbooks/staging-rollout.md). Deploy the service
 privately first while the backend remains on its direct Gemini adapter; only then enable the
 backend feature flag. This keeps a one-change rollback path available at all times.
+
+## Agent Tooling
+
+This repo declares the [Superpowers](https://github.com/obra/superpowers) Claude
+Code plugin in `.claude/settings.json`, but that file only records intent —
+Claude Code does not auto-install a plugin just because a repo declares it. After
+cloning, run once per machine:
+
+```bash
+claude plugin marketplace add obra/superpowers-marketplace
+claude plugin install superpowers@superpowers-marketplace --scope project
+```
+
+Skip this and `claude plugin list` will show the plugin as `failed to load` inside
+this repo. Not using Claude Code, or don't want the plugin? Nothing to do — it has
+no effect on the build or runtime.
