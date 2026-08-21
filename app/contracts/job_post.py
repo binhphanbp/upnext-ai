@@ -4,7 +4,7 @@ import base64
 import binascii
 from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator
 
 from app.contracts.llm import StrictModel
 
@@ -23,15 +23,27 @@ class JobPostSourceFile(StrictModel):
     ] = Field(alias="mimeType")
     base64_data: str = Field(min_length=4, max_length=_MAX_BASE64_CHARACTERS, alias="base64Data")
 
-    @model_validator(mode="after")
-    def validate_encoded_size(self) -> JobPostSourceFile:
+    @field_validator("base64_data")
+    @classmethod
+    def validate_encoded_size(cls, value: str) -> str:
+        """Validate the encoding at field level, not model level.
+
+        A model-level validator makes pydantic report the failure against the
+        whole `file` object, so its error carries the entire base64 payload as
+        `input` -- up to 12 million characters of a recruiter's private document
+        echoed straight back to the caller. Narrowing the scope to this one field
+        keeps the failure location precise and the payload out of the error.
+        The exception handler in `app.main` strips `input` regardless; this is the
+        second layer, so a future model-level validator cannot reopen the hole.
+        """
+
         try:
-            decoded = base64.b64decode(self.base64_data, validate=True)
+            decoded = base64.b64decode(value, validate=True)
         except (ValueError, binascii.Error) as error:
             raise ValueError("file must be valid base64") from error
         if not decoded or len(decoded) > _MAX_SOURCE_FILE_BYTES:
             raise ValueError(f"file must be between 1 and {_MAX_SOURCE_FILE_BYTES} bytes")
-        return self
+        return value
 
     def content(self) -> bytes:
         """Decode at the provider boundary; never persist or log source data."""

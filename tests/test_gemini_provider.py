@@ -23,7 +23,13 @@ from app.providers.json_schema import normalize_response_json_schema
 
 
 def settings(*, gemini_api_key: str | None = "test-key") -> Settings:
+    # `_env_file=None` is load-bearing. pydantic-settings drops init kwargs whose
+    # value is None, so `gemini_api_key=None` does not override the dotenv source:
+    # a developer's real key in `.env` gets injected instead, the fails-closed
+    # tests stop failing closed, and the suite makes a billed call to the live
+    # provider. CI has no `.env`, so the leak is invisible there.
     return Settings(
+        _env_file=None,  # type: ignore[call-arg] - BaseSettings accepts it; the generated __init__ hides it.
         internal_jwt_secret=SecretStr("test-internal-secret-that-is-at-least-32-characters"),
         gemini_api_key=SecretStr(gemini_api_key) if gemini_api_key else None,
         environment="test",

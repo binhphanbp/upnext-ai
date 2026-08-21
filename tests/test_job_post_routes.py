@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_llm_provider
 from app.main import create_app
-from tests.helpers import StubProvider, auth_headers
+from tests.helpers import StubProvider, assert_contract_rejected, auth_headers
 
 
 def client_with_stub() -> tuple[TestClient, StubProvider]:
@@ -67,7 +67,7 @@ def test_job_post_extraction_rejects_invalid_base64_files() -> None:
         headers=auth_headers(scope="job-post:extract"),
         json=common,
     )
-    assert response.status_code == 422
+    assert_contract_rejected(response)
 
 
 def test_job_post_generation_accepts_only_its_dedicated_scope() -> None:
@@ -114,18 +114,18 @@ def test_job_post_generation_accepts_only_its_dedicated_scope() -> None:
             },
         },
     )
-    assert response.status_code == 422
+    assert_contract_rejected(response)
 
     response = client.post(
         "/internal/v1/job-posts/generate",
         headers=auth_headers(scope="job-post:generate"),
         json={**payload, "modelTier": "fast"},
     )
-    assert response.status_code == 422
+    assert_contract_rejected(response)
 
     response = client.post(
         "/internal/v1/job-posts/generate",
         headers=auth_headers(scope="job-post:generate"),
         json={**payload, "executionProfile": "batch"},
     )
-    assert response.status_code == 422
+    assert_contract_rejected(response)
