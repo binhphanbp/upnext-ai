@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_embedding_provider
 from app.main import create_app
 from app.providers.base import ProviderInvalidOutputError, ProviderTimeoutError
-from tests.helpers import StubEmbeddingProvider, auth_headers
+from tests.helpers import StubEmbeddingProvider, assert_contract_rejected, auth_headers
 
 
 def client_with_stub() -> tuple[TestClient, StubEmbeddingProvider]:
@@ -59,8 +59,8 @@ def test_embedding_endpoint_rejects_dimension_drift_and_unknown_fields() -> None
         json={"text": "hello", "dimensions": 768, "model": "another-model"},
     )
 
-    assert wrong_dimensions.status_code == 422
-    assert unknown_field.status_code == 422
+    assert_contract_rejected(wrong_dimensions)
+    assert_contract_rejected(unknown_field)
 
 
 def test_embedding_endpoint_maps_provider_failures_to_stable_codes() -> None:

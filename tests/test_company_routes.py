@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_llm_provider
 from app.main import create_app
-from tests.helpers import StubProvider, auth_headers
+from tests.helpers import StubProvider, assert_contract_rejected, auth_headers
 
 LICENCE = base64.b64encode(b"%PDF-1.7 business licence").decode()
 
@@ -72,7 +72,7 @@ def test_license_extraction_rejects_a_request_without_a_document() -> None:
         json=body,
     )
 
-    assert response.status_code == 422
+    assert_contract_rejected(response)
 
 
 def test_license_extraction_rejects_an_unsupported_document_type() -> None:
@@ -84,7 +84,7 @@ def test_license_extraction_rejects_an_unsupported_document_type() -> None:
         json=payload(file={"mimeType": "text/html", "base64Data": LICENCE}),
     )
 
-    assert response.status_code == 422
+    assert_contract_rejected(response)
 
 
 def test_license_extraction_rejects_malformed_base64() -> None:
@@ -96,4 +96,4 @@ def test_license_extraction_rejects_malformed_base64() -> None:
         json=payload(file={"mimeType": "application/pdf", "base64Data": "not-base64!!"}),
     )
 
-    assert response.status_code == 422
+    assert_contract_rejected(response)

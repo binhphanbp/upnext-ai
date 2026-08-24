@@ -34,6 +34,24 @@ def auth_headers(**claims: Any) -> dict[str, str]:
     return {"Authorization": f"Bearer {internal_token(**claims)}"}
 
 
+def assert_contract_rejected(response: Any) -> None:
+    """Assert a body the narrow contract refuses is reported as *our* outage.
+
+    `upnext-be` is the only caller and builds every body from its own code, so a
+    validation failure means the two services disagree about the schema -- our
+    bug, never the recruiter's. It must therefore be failover-eligible.
+
+    These assertions used to read `422`, which quietly inverted that: the backend
+    reads a code from `detail`, cannot find one in FastAPI's list-shaped default
+    body, and falls back to guessing from the status -- where 422 means
+    AI_INVALID_OUTPUT, the single code that must never fail over. The recruiter
+    got "the AI could not read your content" and no second provider was tried.
+    """
+
+    assert response.status_code == 500
+    assert response.json()["detail"]["code"] == "AI_SERVICE_UNAVAILABLE"
+
+
 class StubProvider(LlmProvider):
     def __init__(self) -> None:
         self.structured_calls: list[dict[str, Any]] = []

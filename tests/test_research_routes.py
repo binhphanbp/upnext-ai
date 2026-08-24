@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_grounded_provider
 from app.main import create_app
 from app.providers.base import GroundedAnswer
-from tests.helpers import StubGroundedProvider, auth_headers
+from tests.helpers import StubGroundedProvider, assert_contract_rejected, auth_headers
 
 
 def client_with_stub(
@@ -108,4 +108,4 @@ def test_grounded_rejects_an_empty_prompt() -> None:
         json=payload(prompt=""),
     )
 
-    assert response.status_code == 422
+    assert_contract_rejected(response)
